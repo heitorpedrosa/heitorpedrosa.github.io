@@ -1,0 +1,1338 @@
+:source-highlighter: pygments
+:toc: left
+:toc-title: Sumário
+:imagesdir: images
+
+= DCA0445 - Processamento digital de imagens =
+
+Heitor Costa Pedrosa - heitor.pedrosa.702@ufrn.edu.br
+
+2023.1
+
+== Introdução ==
+
+Este site destina-se a apresentar as soluções desenvolvidas para os exercícios propostos na disciplina de Processamento Digital de Imagens (PDI), ofertada no Departamento de Engenharia de Computação e Automação da UFRN e ministrado pelo professor Agostinho De Medeiros Brito Junior, cujo o material da disciplina se encontra disponível em https://agostinhobritojr.github.io/tutorial/pdi/.
+
+Os exercícios apresentados a seguir foram desenvolvidos em C++, utilizando a biblioteca OpenCV <https://opencv.org/>.
+
+:sectnums:
+
+== Manipulando pixels em uma imagem ==
+
+=== Exercício *_regions.cpp_* ===
+
+Usando o arquivo *regions.cpp* como referência, foi implementado um algorítmo que recebe uma imagem e inverte as cores de uma região definida pelas coordenadas de dois pontos *P1* e *P2*. O resultado do algorítmo pode ser visto abaixo.
+
+[source,cpp]
+.regions.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+bool verificaPontos ( Point P1, Point P2, Point tamanho_imagem ); //Verificar a validade dos pontos
+
+int main () {
+    Mat image;
+
+    image = imread ( "biel.png", IMREAD_GRAYSCALE ); //Abrir imagem
+    if ( !image.data ) {
+        cout << "Deu ruim" << endl;
+        return -1;
+    }
+
+    namedWindow ( "Imagem_Original", WINDOW_AUTOSIZE ); //Criação da janela
+    imshow ( "Imagem_Original", image ); //Exibição da janela
+    waitKey ();
+    destroyWindow ("Imagem_Original"); //Fechamento da janela
+
+    Point P1, P2, tamanho_imagem;
+    bool flag;
+
+    tamanho_imagem.x = image.rows;
+    tamanho_imagem.y = image.cols;
+
+    cout << "Tamanho da imagem: " << tamanho_imagem.x << " x " << tamanho_imagem.y << endl;
+
+    do {
+        cout << "Digite as coordenadas (x,y) do pontos P1" << endl;
+        cin >> P1.x >> P1.y;
+        cout << "Digite as coordenadas (x,y) do pontos P2" << endl;
+        cin >> P2.x >> P2.y;
+
+        if ( P1.x >= P2.x || P1.y >= P2.y ) {
+            cout << "\nAs coordenadas de P1 devem ser menores que as coordenadas de P2" << endl;
+            continue;
+        }
+        flag = verificaPontos ( P1, P2, tamanho_imagem );
+        if ( !flag ) {
+            cout << "\nCoordenadas fora dos limites da imagem" << endl;
+            cout << "Tamanho da imagem: " << tamanho_imagem.x << " x " << tamanho_imagem.y << endl;
+        }
+
+    } while ( !flag );
+
+    /*P1.x = 30;
+    P1.y = 90;
+    P2.x = 200;
+    P2.y = 180;*/
+
+    for ( int i = P1.x; i < P2.x; i++ ) {
+        for ( int j = P1.y; j < P2.y; j++ ) {
+            image.at<uchar>( i, j ) = 255 - image.at<uchar>( i, j ); //Negativo da imagem
+        }
+    }
+
+    namedWindow ( "Imagem_Negativa", WINDOW_AUTOSIZE ); //Criação da janela
+    //imwrite ( "biel_negativa.png", image ); //Salvar imagem modificada
+    imshow ( "Imagem_Negativa", image ); //Exibição da janela
+    waitKey ();
+
+    return 0;
+}
+
+bool verificaPontos ( Point P1, Point P2, Point tamanho_imagem ) {
+    if ( P1.x > 0 && P1.x < tamanho_imagem.x && P1.y > 0 && P1.y < tamanho_imagem.y ) {
+        if ( P2.x > 0 && P2.x < tamanho_imagem.x && P2.y > 0 && P2.y < tamanho_imagem.y ) {
+            return true;
+        }
+    }
+    return false;
+}
+----
+
+image::biel_negativa.png[title="Resultado - regions.cpp"]
+
+=== Exercício *_trocaregioes.cpp_* ===
+
+Utilizando o programa *pixels.cpp* como referência, foi implementado um programa que troca as regiões de uma imagem fornecida.
+
+A implementação do algoritmo pode ser visualizado a seguir.
+
+[source,cpp]
+.trocaregioes.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+int main () {
+    Mat image, A, B, C, D, aux;
+
+    image = imread ( "biel.png", IMREAD_GRAYSCALE ); //Abrir imagem
+    if ( !image.data ) {
+        cout << "Deu ruim" << endl;
+        return -1;
+    }
+
+    namedWindow ( "Imagem_Original", WINDOW_AUTOSIZE ); //Criação da janela
+    imshow ( "Imagem_Original", image ); //Exibição da janela
+    waitKey ();
+    destroyWindow ("Imagem_Original"); //Fechamento da janela
+
+    Point centro;
+
+    centro.x = ( int ) image.rows / 2;
+    centro.y = ( int ) image.cols / 2;
+
+    A = image ( Rect ( 0, 0, centro.x, centro.y ) ); //Superior esquerdo
+    B = image ( Rect (centro.x, 0, centro.x, centro.y ) ); //Inferior esquerdo
+    C = image ( Rect ( 0, centro.y, centro.x, centro.y ) ); //Superior direito
+    D = image ( Rect (centro.x, centro.y, centro.x, centro.y ) ); //Inferior direito
+
+    //Trocando superior esquerdo com inferior direito
+    A.copyTo ( aux );
+    D.copyTo ( A );
+    aux.copyTo ( D );
+
+    //Trocando superior direito com inferior esquerdo
+    B.copyTo ( aux );
+    C.copyTo ( B );
+    aux.copyTo ( C );
+
+    namedWindow ( "Imagem_Trocada", WINDOW_AUTOSIZE ); //Criação da janela
+    //imwrite ( "biel_trocada.png", image ); //Salvar imagem modificada
+    imshow ( "Imagem_Trocada", image ); //Exibição da janela
+    waitKey ();
+
+    return 0;
+}
+----
+
+image::biel_trocada.png[title="Resultado - trocaregioes.cpp"]
+
+== Serialização de dados em ponto flutuante via FileStorage ==
+
+== Decomposição de imagens em planos de bits ==
+
+=== Exercício *_esteganografia_decode.cpp_* ===
+
+Usando o programa *esteg-encode.cpp* como referência para esteganografia, foi implementado um código para decodificar a seguinte imagem.
+
+image::esteganografia.png[title="Imagem codificada"]
+
+A implementação do algoritmo pode ser visualizado a seguir.
+
+[source,cpp]
+.esteganografia_decode.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main () {
+    Mat imagemEscondida, imagemFinal;
+    Vec3b valEscondida, valFinal, valAux;
+    int nbits = 3;
+
+    imagemFinal = imread ( "esteganografia.png", IMREAD_COLOR );
+
+    if ( imagemFinal.empty () ) {
+        cout << "Deu ruim" << endl;
+        return -1;
+    }
+
+    imagemEscondida = imagemFinal.clone ();
+
+    imshow ( "", imagemFinal );
+    waitKey ();
+    destroyWindow ( "" );
+
+    for ( int i = 0; i < imagemEscondida.rows; i++ ) {
+        for ( int j = 0; j < imagemEscondida.cols; j++ ) {
+            valEscondida = imagemEscondida.at<Vec3b>( i, j );
+            valEscondida [ 0 ] = valEscondida [ 0 ] << ( 8 - nbits );
+            valEscondida [ 1 ] = valEscondida [ 1 ] << ( 8 - nbits );
+            valEscondida [ 2 ] = valEscondida [ 2 ] << ( 8 - nbits );
+            imagemEscondida.at<Vec3b>( i, j ) = valEscondida;
+        }
+    }
+
+    //imwrite ( "esteganografia_decode.png", imagemEscondida );
+    imshow ( "", imagemEscondida );
+    waitKey ();
+
+    return 0;
+}
+----
+
+image::esteganografia_decode.png[title="Resultado - esteganografia_decode.cpp"]
+
+== Preenchendo regiões ==
+
+=== Exercício *_labeling.cpp_* ===
+
+A partir do *labeling.cpp*, o algorítmo de contagem foi aprimorado, levando em consideração objetos com mais de um buraco e excluindo as bolhas que tocam a borda da imagem. Abaixo podemos ver o código e o resultado de sua execução:
+
+[cols="a,a", frame=none, grid=nome]
+|===
+|image::bolhas1.png[title="Imagem bolhas1.png"]
+|image::bolhas2.png[title="Imagem bolhas2.png"]
+|===
+
+[source,cpp]
+.labeling.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+int main () {
+    Mat original, image;
+    Point p;
+    int n_com_furos = 0, n_sem_furos = 0;
+
+    original = imread ( "bolhas.png", IMREAD_GRAYSCALE );
+
+    if ( original.empty () ) {
+        cout << "Deu ruim" << endl;
+        return -1;
+    }
+
+    image = original.clone ();
+
+    p.x = 0;
+    p.y = 0;
+
+    //Retirar as bolhas que estejam nas bordas
+    for ( int i = 0; i < image.rows; i++ ) {
+        //Borda esquerda
+        if ( image.at<uchar>( i, 0 ) == 255 ) {
+            p.x = 0;
+            p.y = i;
+            floodFill ( image, p, 0 );
+        }
+        //Borda direita
+        if ( image.at<uchar>( i, image.cols - 1 ) == 255 ) {
+            p.x = image.cols - 1;
+            p.y = i;
+            floodFill ( image, p, 0 );
+        }
+    }
+
+    for ( int i = 0; i < image.cols; i++ ) {
+        //Borda superior
+        if ( image.at<uchar>( 0, i ) == 255 ) {
+            p.x = i;
+            p.y = 0;
+            floodFill ( image, p, 0 );
+        }
+        //Borda inferior
+        if ( image.at<uchar>( image.rows - 1 , i ) == 255 ) {
+            p.x = i;
+            p.y = image.cols - 1;
+            floodFill ( image, p, 0 );
+        }
+    }
+
+    //Preencher fundo com cor diferente
+    p.x = 0;
+    p.y = 0;
+    floodFill ( image, p, 1 );
+
+    //Bolhas com 1 furo ou mais
+    for ( int i = 0; i < image.rows; i++ ) {
+        for ( int j = 0; j < image.cols; j++ ) {
+            if ( image.at<uchar>( i, j ) == 0 && image.at<uchar>( i - 1, j - 1 ) == 255 ) {
+                n_com_furos++;
+
+                p.x = j - 1;
+                p.y = i - 1;
+                floodFill ( image, p, 80 );
+
+                p.x = j;
+                p.y = i;
+                floodFill ( image, p, 128 );
+            }
+
+            //Furos dentro de bolhas já contadas
+            if ( image.at<uchar>( i, j ) == 255 && image.at<uchar>( i - 1, j - 1 ) == 128 ) {
+                p.x = j;
+                p.y = i;
+                floodFill ( image, p, 180 );
+            }
+        }
+    }
+
+    //Bolhas sem furos
+    for ( int i = 0; i < image.rows; i++ ) {
+        for ( int j = 0; j < image.cols; j++ ) {
+            if ( image.at<uchar>( i, j ) == 255 ) {
+                n_sem_furos++;
+                p.x = j;
+                p.y = i;
+                floodFill ( image, p, 254 );
+            }
+        }
+    }
+
+    cout << "Bolhas com furos: " << n_com_furos << endl;
+    cout << "Bolhas sem furos: " << n_sem_furos << endl;
+
+    imshow ( "image", image );
+    //imwrite ( "bolhas.png", image );
+    waitKey ();
+
+    return 0;
+}
+----
+
+[cols="a,a", frame=none, grid=nome]
+|===
+|image::bolhas1_labeling.png[title="Resultado 1 - labeling.cpp"]
+|image::bolhas2_labeling.png[title="Resultado 2 - labeling.cpp"]
+|===
+
+== Manipulação de histogramas
+
+=== Exercício *_equalize.cpp_* ===
+
+Utilizando o programa *histogram.cpp* como referência, foi desenvolvido um código que realiza a equalização dos quadros provenientes de um stream de vídeo. A equalização do histograma ocorre nas 3 componentes de cores (R,G,B) da imagem. Abaixo, tem-se o código da implementação.
+
+[source,cpp]
+.equalize.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+int main () {
+    Mat image;
+    int width, height;
+    VideoCapture cap;
+    vector<Mat> planes;
+    Mat histR, histG, histB;
+    int nbins = 64;
+    float range [] = { 0, 256 };
+    const float *histrange = { range };
+    bool uniform = true;
+    bool acummulate = false;
+
+    cap.open ( 0 );
+
+    if ( !cap.isOpened () ) {
+        cout << "Deu ruim";
+        return -1;
+    }
+
+    cap.set ( CAP_PROP_FRAME_WIDTH, 640);
+    cap.set ( CAP_PROP_FRAME_HEIGHT, 480 );
+    width = cap.get ( CAP_PROP_FRAME_WIDTH );
+    height = cap.get ( CAP_PROP_FRAME_HEIGHT );
+
+    cout << "largura = " << width << endl;
+    cout << "altura  = " << height << endl;
+
+    int histw = nbins, histh = nbins / 2;
+    Mat histImgR ( histh, histw, CV_8UC3, Scalar ( 0, 0, 0 ) );
+    Mat histImgG ( histh, histw, CV_8UC3, Scalar ( 0, 0, 0 ) );
+    Mat histImgB ( histh, histw, CV_8UC3, Scalar ( 0, 0, 0 ) );
+
+    while ( 1 ) {
+        cap >> image;
+        split ( image, planes );
+
+        equalizeHist ( planes [ 0 ], planes [ 0 ] );
+        equalizeHist ( planes [ 1 ], planes [ 1 ] );
+        equalizeHist ( planes [ 2 ], planes [ 2 ] );
+
+        calcHist ( &planes [ 0 ], 1, 0, Mat (), histR, 1, &nbins, &histrange, uniform, acummulate );
+        calcHist ( &planes [ 1 ], 1, 0, Mat (), histG, 1, &nbins, &histrange, uniform, acummulate );
+        calcHist ( &planes [ 2 ], 1, 0, Mat (), histB, 1, &nbins, &histrange, uniform, acummulate );
+
+        normalize ( histR, histR, 0, histImgR.rows, NORM_MINMAX, -1, Mat () );
+        normalize ( histG, histB, 0, histImgR.rows, NORM_MINMAX, -1, Mat () );
+        normalize ( histB, histB, 0, histImgR.rows, NORM_MINMAX, -1, Mat () );
+
+        merge ( planes, image );
+
+        histImgR.setTo ( Scalar ( 0 ) );
+        histImgG.setTo ( Scalar ( 0 ) );
+        histImgB.setTo ( Scalar ( 0 ) );
+
+        for ( int i = 0; i < nbins; i++ ) {
+            line ( histImgR, Point ( i, histh ), Point ( i, cvRound ( histR.at<float>( i ) ) ), Scalar ( 0, 0, 255 ), 1, 8, 0 );
+            line ( histImgG, Point ( i, histh ), Point ( i, cvRound ( histG.at<float>( i ) ) ), Scalar ( 0, 255, 0 ), 1, 8, 0 );
+            line ( histImgB, Point ( i, histh ), Point ( i, cvRound ( histB.at<float>( i ) ) ), Scalar ( 255, 0, 0 ), 1, 8, 0 );
+        }
+
+        histImgR.copyTo ( image ( Rect ( 0, 0, nbins, histh ) ) );
+        histImgG.copyTo ( image ( Rect ( 0, histh, nbins, histh ) ) );
+        histImgB.copyTo ( image ( Rect ( 0, 2 * histh, nbins, histh ) ) );
+
+        imshow ( "Resultado", image );
+        if ( waitKey ( 30 ) == 27 ) break;
+    }
+    return 0;
+}
+----
+
+[cols="a,a", frame=none, grid=nome]
+|===
+|image::equalize_original.png[title="Imagem sem equalização"]
+|image::equalize_resultado.png[title="Imagem equalizada"]
+|===
+
+=== Exercício *_motiondetector.cpp_* ===
+
+Utilizando o programa *histogram.cpp* como referência, foi desenvolvido um código que realiza a detecção de movimento utilizando uma média móvel entre os histogramas. O valor utilizado para determinar a detecção de movimento foi obtido experimentalmente.
+
+[source,cpp]
+.motiondetector.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+#include  <time.h>
+#include <math.h>
+
+using namespace cv;
+using namespace std;
+
+int main () {
+    Mat image;
+    int width, height;
+    VideoCapture cap;
+    vector<Mat> planes;
+    Mat histR,histV;
+    int nbins = 64;
+    float range [] = { 0, 256 };
+    const float *histrange = { range };
+    bool uniform = true;
+    bool acummulate = false;
+
+    int intervalo = 500;
+    clock_t time_1, time_2;
+    int saida_1 = -1;
+    float thres = 40, dif = 0;
+    double saida_2;
+
+    cap.open ( 0 );
+
+    if ( !cap.isOpened () ) {
+        cout << "Deu ruim";
+        return -1;
+    }
+
+    cap.set ( CAP_PROP_FRAME_WIDTH, 640 );
+    cap.set ( CAP_PROP_FRAME_HEIGHT, 480 );
+    width = cap.get ( CAP_PROP_FRAME_WIDTH );
+    height = cap.get ( CAP_PROP_FRAME_HEIGHT );
+
+    cout << "largura = " << width << endl;
+    cout << "altura  = " << height << endl;
+
+    int histw = nbins, histh = nbins / 2;
+    Mat histImgR ( histh, histw, CV_8UC3, Scalar ( 0, 0, 0 ) );
+
+    time_1 = clock ();
+    histV.setTo ( Scalar ( 0 ) );
+
+    while ( 1 ) {
+        cap >> image;
+        split ( image, planes );
+        calcHist ( &planes [ 0 ], 1, 0, Mat (), histR, 1, &nbins, &histrange, uniform, acummulate );
+
+        normalize ( histR, histR, 0, histImgR.rows, NORM_MINMAX, -1, Mat () );
+
+        if ( saida_1 == -1 ) {
+            histV = histR.clone ();
+        }
+        histImgR.setTo ( Scalar ( 0 ) );
+
+        for ( int i = 0; i < nbins; i++ ) {
+            dif += abs ( histV.at<float>( i ) - histR.at<float>( i ) );
+
+            line ( histImgR, Point ( i, histh ), Point ( i, cvRound ( histR.at<float>( i ) ) ),Scalar ( 0, 0, 255 ), 1, 8, 0 );
+        }
+
+        if ( dif > thres ) {
+            circle ( image, Point ( image.cols / 2, image.rows / 2 ), 200, Scalar ( 0, 0, 255 ), -200 );
+        }
+
+        dif = 0;
+
+        histImgR.copyTo ( image ( Rect ( 0, 0 ,nbins, histh ) ) );
+        imshow ( "", image );
+        if ( waitKey ( 30 ) == 27 ) break;
+
+        saida_1 = ( int ) clock () - ( time_1 );
+        saida_2 = ( double ) ( ( saida_1 ) / ( double ) CLOCKS_PER_SEC );
+        saida_2 *= 1000.0;
+        if ( ( int ) saida_2 % intervalo < 100 ) {
+            histV = histR.clone ();
+        }
+    }
+    return 0;
+}
+----
+
+== Filtragem no domínio espacial I ==
+
+=== Exercício *_laplgaus.cpp_* ===
+
+Usando o programa *filtroespacial.cpp* como referência, uma opção de aplicar o filtro laplaciano após aplicar um filtro gaussiano na imagem foi adicionado. A letra de seleção para aplicar este filtro é a *X*.
+
+Abaixo, tem-se o código da implementação.
+
+[source,cpp]
+.laplgaus.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+void printmask ( Mat &m ) {
+    for ( int i = 0; i < m.size().height; i++ ) {
+        for ( int j = 0; j < m.size().width; j++ ) {
+            cout << m.at<float>( i, j ) << ",";
+        }
+        cout << "\n";
+    }
+}
+
+int main ( int, char ** ) {
+    VideoCapture cap;
+
+    float media [] = { 0.1111, 0.1111, 0.1111,
+                       0.1111, 0.1111, 0.1111,
+                       0.1111, 0.1111, 0.1111 };
+
+    float gauss [] = { 0.0625, 0.125,  0.0625,
+                       0.125, 0.25, 0.125,
+                       0.0625, 0.125,  0.0625 };
+
+    float horizontal [] = { -1, 0, 1,
+                            -2, 0, 2,
+                            -1, 0, 1 };
+
+    float vertical [] = { -1, -2, -1,
+                           0, 0, 0,
+                           1, 2, 1 };
+
+    float laplacian [] = { 0, -1, 0,
+                          -1, 4, -1,
+                           0, -1, 0 };
+
+    float boost [] = { 0, -1, 0,
+                      -1, 5.2, -1,
+                       0, -1, 0 };
+
+    Mat frame, framegray, frame32f, frameFiltered;
+    Mat mask ( 3, 3, CV_32F );
+    Mat result;
+    double width, height;
+    int absolut;
+    char key, aux = 'm';
+
+    cap.open ( 0 );
+
+    if ( !cap.isOpened () )
+        return -1;
+
+    cap.set ( CAP_PROP_FRAME_WIDTH, 640 );
+    cap.set ( CAP_PROP_FRAME_HEIGHT, 480 );
+    width = cap.get ( CAP_PROP_FRAME_WIDTH );
+    height = cap.get ( CAP_PROP_FRAME_HEIGHT );
+    cout << "largura=" << width << "\n";
+    cout << "altura =" << height << "\n";
+    cout << "fps    =" << cap.get ( CAP_PROP_FPS ) << "\n";
+    cout << "format =" << cap.get ( CAP_PROP_FORMAT ) << "\n";
+
+    namedWindow ( "filtroespacial", WINDOW_NORMAL );
+    namedWindow ( "original", WINDOW_NORMAL );
+
+    mask = Mat ( 3, 3, CV_32F, media );
+
+    absolut = 1;
+
+    for (;;) {
+        cap >> frame;
+        cvtColor ( frame, framegray, COLOR_BGR2GRAY );
+        flip ( framegray, framegray, 1 );
+        imshow ( "original", framegray );
+        framegray.convertTo ( frame32f, CV_32F );
+        filter2D ( frame32f, frameFiltered, frame32f.depth (), mask, Point ( 1, 1 ), 0 );
+
+        if ( absolut ) {
+            frameFiltered = abs ( frameFiltered );
+        }
+
+        if ( aux == 'x' ) {
+            mask = Mat ( 3, 3, CV_32F, laplacian );
+            filter2D ( frame32f, frameFiltered, frame32f.depth (), mask, Point ( 1, 1 ), 0 );
+            mask = Mat ( 3, 3, CV_32F, gauss );
+        }
+
+        frameFiltered.convertTo ( result, CV_8U );
+
+        imshow ( "filtroespacial", result );
+
+        key = ( char ) waitKey ( 10 );
+        if ( key == 27 ) break;
+        switch ( key ) {
+            case 'a':
+                aux = key;
+                absolut = !absolut;
+                break;
+            case 'm':
+                aux = key;
+                mask = Mat ( 3, 3, CV_32F, media );
+                printmask ( mask );
+                break;
+            case 'g':
+                aux = key;
+                mask = Mat ( 3, 3, CV_32F, gauss );
+                printmask ( mask );
+                break;
+            case 'h':
+                aux = key;
+                mask = Mat ( 3, 3, CV_32F, horizontal );
+                printmask ( mask );
+                break;
+            case 'v':
+                aux = key;
+                mask = Mat ( 3, 3, CV_32F, vertical );
+                printmask(mask);
+                break;
+            case 'l':
+                aux = key;
+                mask = Mat ( 3, 3, CV_32F, laplacian );
+                printmask ( mask );
+                break;
+            case 'b':
+                aux = key;
+                mask = Mat ( 3, 3, CV_32F, boost );
+                break;
+            case 'x':
+                aux = key;
+                mask = Mat ( 3, 3, CV_32F, gauss );
+                printmask ( mask );
+            default:
+                break;
+        }
+    }
+    return 0;
+}
+----
+
+== Filtragem no domínio espacial II ==
+
+=== Exercício *_tiltshift.cpp_* ===
+
+Usando o programa *addweighted.cpp* como referência, foi implmementado um programa para a realizar o tilt-shift em uma imagem colorida.
+
+Abaixo, tem-se o código da implementação.
+
+[source,cpp]
+.tiltshift.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace cv;
+using namespace std;
+
+float l1 = -100, l2 = 50, d = 6, centro = 100;
+
+int matriz_media_tam = 7;
+int altura, largura;
+
+int slider_altura = 0;
+int slider_altura_max = 100;
+
+int slider_decaimento = 0;
+int slider_decaimento_max = 100;
+
+int slider_deslocamento = 0;
+int slider_deslocamento_max = 100;
+
+Mat imagem, imagem_borrada;
+
+char TrackbarName [ 50 ];
+
+void aplicar_Efeito ();
+
+void on_trackbar_deslocamento ( int, void * ) {
+    centro = slider_deslocamento * altura / 100;
+
+    aplicar_Efeito ();
+}
+
+void on_trackbar_altura ( int, void * ) {
+    int alt = altura * slider_altura / 100;
+    l1 = -alt / 2;
+    l2 = alt / 2;
+
+    aplicar_Efeito ();
+}
+
+void on_trackbar_decaimento ( int, void * ) {
+    d = slider_decaimento;
+
+    aplicar_Efeito ();
+}
+
+void aplicar_Efeito () {
+    Mat ponderada ( altura, largura, CV_32FC3 );
+    Mat ponderada_negativa ( altura, largura, CV_32FC3 );
+
+    cout << "centro: " << centro << ", l1: " << l1 << ", l2: " << l2 << ", decaimento: " << d << endl;
+
+    for ( int i = 0; i < altura; i++ ) {
+        float fx = 0.0;
+        if ( d != 0 ) {
+            fx = -0.5 * (tanh((i - centro + l1) / d) - tanh((i - centro + l2) / d));
+        }
+        else {
+            fx = -0.5 * ( tanh ( ( i - centro + l1 ) / 0.01 ) - tanh ( ( i - centro + l2 ) / 0.01 ) );
+        }
+
+        for ( int j = 0; j < largura; j++ ) {
+            ponderada.at<Vec3f>( i, j )[ 0 ] = fx;
+            ponderada.at<Vec3f>( i, j )[ 1 ] = fx;
+            ponderada.at<Vec3f>( i, j )[ 2 ] = fx;
+            ponderada_negativa.at<Vec3f>( i, j )[ 0 ] = 1.0 - fx;
+            ponderada_negativa.at<Vec3f>( i, j )[ 1 ] = 1.0 - fx;
+            ponderada_negativa.at<Vec3f>( i, j )[ 2 ] = 1.0 - fx;
+        }
+    }
+
+    Mat resultado, res1, res2;
+
+    // Cada imagem é multiplicada por sua respectiva matriz ponderada
+    multiply ( imagem, ponderada, res1 );
+    multiply ( imagem_borrada, ponderada_negativa, res2 );
+
+    // As matrizes ponderadas são somadas
+    addWeighted ( res1, 1, res2, 1, 0, resultado );
+
+    resultado.convertTo ( resultado, CV_8UC3 );
+
+    imshow ( "tiltshift", resultado );
+}
+
+int main ( int argvc, char **argv ) {
+    float media [ matriz_media_tam * matriz_media_tam ];
+    for ( int i = 0; i < matriz_media_tam; i++ ) {
+        for ( int j = 0; j < matriz_media_tam; j++ ) {
+            media [ i * matriz_media_tam + j ] = 1.0 / ( matriz_media_tam * matriz_media_tam );
+        }
+    }
+    Mat masc_media ( matriz_media_tam, matriz_media_tam, CV_32F, media );
+
+    vector<Mat> canais;
+
+    imagem = imread ( "tiltshift.jpg" );
+    imagem.convertTo ( imagem, CV_32FC3 );
+
+    split ( imagem, canais );
+
+    filter2D ( canais [ 0 ], canais [ 0 ], canais [ 0 ].depth (), masc_media, Point ( 3, 3 ), 0 );
+    filter2D ( canais [ 1 ], canais [ 1 ], canais [ 1 ].depth (), masc_media, Point ( 3, 3 ), 0 );
+    filter2D ( canais [ 2 ], canais [ 2 ], canais [ 2 ].depth (), masc_media, Point ( 3, 3 ), 0 );
+
+    merge ( canais, imagem_borrada );
+
+    largura = imagem.cols;
+    altura = imagem.rows;
+
+    namedWindow ( "tiltshift",WINDOW_NORMAL );
+
+    sprintf ( TrackbarName, "Altura x %d", slider_altura_max );
+    createTrackbar ( TrackbarName, "tiltshift", &slider_altura, slider_altura_max, on_trackbar_altura );
+    on_trackbar_altura ( slider_altura, 0 );
+
+    sprintf ( TrackbarName, "Decaimento x %d", slider_decaimento_max);
+    createTrackbar ( TrackbarName, "tiltshift", &slider_decaimento, slider_decaimento_max, on_trackbar_decaimento );
+    on_trackbar_decaimento ( slider_decaimento, 0 );
+
+    sprintf ( TrackbarName, "Deslocamento x %d", slider_deslocamento_max );
+    createTrackbar ( TrackbarName, "tiltshift", &slider_deslocamento, slider_deslocamento_max, on_trackbar_deslocamento );
+    on_trackbar_deslocamento ( slider_deslocamento, 0 );
+
+    aplicar_Efeito ();
+
+    waitKey ( 0 );
+
+    return 0;
+}
+----
+
+image::tiltshift.png[title="Resultado - tiltshift.cpp"]
+
+=== Exercício *_tiltshiftvideo.cpp_* ===
+
+Utilizando o programa *tiltshift.cpp* como referência, foi desenvolvido um código que realiza a aplicação da técnica de tiltshift em um vídeo.
+
+[source,cpp]
+.tiltshiftvideo.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace cv;
+using namespace std;
+
+float l1 = -100, l2 = 50, d = 6, centro = 100;
+
+int matriz_media_tam = 7;
+int altura, largura;
+
+int slider_altura = 0;
+int slider_altura_max = 100;
+
+int slider_decaimento = 0;
+int slider_decaimento_max = 100;
+
+int slider_deslocamento = 0;
+int slider_deslocamento_max = 100;
+
+Mat imagem, imagem_borrada;
+Mat resultado;
+
+char TrackbarName [ 50 ];
+
+void aplicar_Efeito ();
+
+void on_trackbar_deslocamento ( int, void * ) {
+    centro = slider_deslocamento * altura / 100;
+}
+
+void on_trackbar_altura ( int, void * ) {
+    int alt = altura * slider_altura / 100;
+    l1 = -alt / 2;
+    l2 = alt / 2;
+}
+
+void on_trackbar_decaimento ( int, void * ) {
+    d = slider_decaimento;
+}
+
+void aplicar_Efeito (  ) {
+    Mat ponderada ( altura, largura, CV_32FC3 );
+    Mat ponderada_negativa ( altura, largura, CV_32FC3 );
+
+    for  ( int i = 0; i < altura; i++ ) {
+        float fx = 0.0;
+        if  ( d != 0 ) {
+            fx = -0.5 *  ( tanh ( ( i - centro + l1 ) / d ) - tanh ( ( i - centro + l2 ) / d ) );
+        }
+        else {
+            fx = -0.5 *  ( tanh ( ( i - centro + l1 ) / 0.01 ) - tanh ( ( i - centro + l2 ) / 0.01 ) );
+        }
+
+        for  ( int j = 0; j < largura; j++ ) {
+            ponderada.at<Vec3f>( i, j )[ 0 ] = fx;
+            ponderada.at<Vec3f>( i, j )[ 1 ] = fx;
+            ponderada.at<Vec3f>( i, j )[ 2 ] = fx;
+            ponderada_negativa.at<Vec3f>( i, j )[ 0 ] = 1.0 - fx;
+            ponderada_negativa.at<Vec3f>( i, j )[ 1 ] = 1.0 - fx;
+            ponderada_negativa.at<Vec3f>( i, j )[ 2 ] = 1.0 - fx;
+        }
+    }
+
+    Mat res1, res2, frame, cap;
+
+    multiply ( imagem, ponderada, res1 );
+    multiply ( imagem_borrada, ponderada_negativa, res2 );
+
+    addWeighted ( res1, 1, res2, 1, 0, resultado );
+
+    resultado.convertTo ( resultado, CV_8UC3 );
+}
+
+int main ( int argvc, char **argv ) {
+    VideoCapture video;
+    double frame_width, frame_height, min, max;
+    float media[ matriz_media_tam * matriz_media_tam ];
+
+    for  ( int i = 0; i < matriz_media_tam; i++ ) {
+        for  ( int j = 0; j < matriz_media_tam; j++ ) {
+            media [ i * matriz_media_tam + j ] = 1.0 / ( matriz_media_tam * matriz_media_tam );
+        }
+    }
+    Mat masc_media ( matriz_media_tam, matriz_media_tam, CV_32F, media ), trash;
+
+    vector<Mat> canais;
+
+    video.open(0);
+    if  ( !video.isOpened () ) {
+        return -1;
+    }
+
+    frame_width = video.get ( CAP_PROP_FRAME_WIDTH );
+    frame_height = video.get ( CAP_PROP_FRAME_HEIGHT );
+    const int frames_per_second = 30;
+    const int fps_record = 2;
+    volatile unsigned descartados = fps_record;
+    Size frame_size ( frame_width, frame_height );
+    video.set ( CAP_PROP_FPS,  ( double )frames_per_second );
+    std::cout << "\nlargura = " << frame_width << "\n";
+    std::cout << "\naltura = " << frame_height << "\n";
+
+    namedWindow ( "tiltshift_video", WINDOW_KEEPRATIO | WINDOW_NORMAL );
+
+    sprintf ( TrackbarName, "Altura x %d", slider_altura_max );
+    createTrackbar ( TrackbarName, "tiltshift_video", &slider_altura, slider_altura_max, on_trackbar_altura );
+    on_trackbar_altura ( slider_altura, 0 );
+
+    sprintf ( TrackbarName, "Decaimento x %d", slider_decaimento_max );
+    createTrackbar ( TrackbarName, "tiltshift_video", &slider_decaimento, slider_decaimento_max, on_trackbar_decaimento );
+    on_trackbar_decaimento ( slider_decaimento, 0 );
+
+    sprintf ( TrackbarName, "Deslocamento x %d", slider_deslocamento_max );
+    createTrackbar ( TrackbarName, "tiltshift_video", &slider_deslocamento, slider_deslocamento_max, on_trackbar_deslocamento );
+    on_trackbar_deslocamento ( slider_deslocamento, 0 );
+
+    int key;
+    for  ( ;; ) {
+        if  ( video.isOpened () )
+            if  ( descartados < fps_record ) {
+                video >> trash;
+                descartados++;
+            }
+            else {
+                video >> imagem;
+                descartados = 0;
+            }
+
+        else
+            break;
+        imagem.convertTo ( imagem, CV_32FC3 );
+
+        split ( imagem, canais );
+
+        filter2D ( canais[ 0 ], canais[ 0 ], canais[ 0 ].depth (), masc_media, Point ( 3, 3 ), 0 );
+        filter2D ( canais[ 1 ], canais[ 1 ], canais[ 1 ].depth (), masc_media, Point ( 3, 3 ), 0 );
+        filter2D ( canais[ 2 ], canais[ 2 ], canais[ 2 ].depth (), masc_media, Point ( 3, 3 ), 0 );
+
+        merge ( canais, imagem_borrada );
+
+        largura = imagem.cols;
+        altura = imagem.rows;
+        aplicar_Efeito ();
+        key = waitKey ( 20 );
+        if  ( key == 27 )
+            break;
+
+        imshow ( "tiltshift_video", resultado );
+    }
+
+    video.release ();
+
+    return 0;
+}
+----
+
+== A Tranformada Discreta de Fourier ==
+
+== Filtragem no Domínio da Frequência ==
+
+=== Exercício *_homomorfico.cpp_* ===
+
+Abaixo, tem-se o código da implementação.
+
+[source, cpp]
+.homomorfico.cpp
+----
+#include <iostream>
+#include <cmath>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
+using namespace cv;
+using namespace std;
+
+int slider_gH = 8;
+const int gH_max = 100;
+float gH = slider_gH / 10.00;
+
+int slider_gL = 6;
+const int gL_max = 100;
+float gL = slider_gL / 10.00;
+
+int slider_c = 10;
+const int c_max = 100;
+float c = slider_c / 10.00;
+
+int slider_d0 = 15;
+const int d0_max = 15;
+float d0 = slider_d0 / 1.00;
+
+int altura, largura;
+char TrackbarName [ 50 ];
+
+void homomorfico ();
+
+void on_trackbar_gH ( int, void * ) {
+    gH = slider_gH / 10.00;
+    homomorfico ();
+}
+
+void on_trackbar_gL ( int, void * ) {
+    gL = slider_gL / 10.00;
+    homomorfico ();
+}
+
+void on_trackbar_c ( int, void * ) {
+    c = slider_c / 10.00;
+    homomorfico ();
+}
+
+void on_trackbar_d0 ( int, void * ) {
+    d0 = slider_d0 / 1.00;
+    homomorfico ();
+}
+
+void makeFilter ();
+void makeImgFinal ();
+
+void deslocaDFT ( Mat &image ) {
+    Mat aux, A, B, C, D;
+
+    int cx = ( int ) image.cols / 2;
+    int cy = ( int ) image.rows / 2;
+
+    A = image ( Rect ( 0, 0, cx, cy ) );
+    B = image ( Rect ( cx, 0, cx, cy ) );
+    C = image ( Rect ( 0, cy, cx, cy ) );
+    D = image ( Rect ( cx, cy, cx, cy ) );
+
+    A.copyTo ( aux );
+    D.copyTo ( A );
+    aux.copyTo ( D );
+
+    C.copyTo ( aux );
+    B.copyTo ( C );
+    aux.copyTo ( B );
+}
+
+Mat imaginaryInput, complexImage;
+Mat padded, filter, filter_print;
+Mat image, aux,output;
+Mat_<float> zeros;
+vector<Mat> planos, filtros, dfts;
+int dft_M, dft_N;
+
+int main () {
+
+    image = imread ( "", IMREAD_GRAYSCALE );
+    imshow ( "imagem_original", image );
+
+    dft_M = getOptimalDFTSize ( image.rows );
+    dft_N = getOptimalDFTSize ( image.cols );
+
+    makeFilter ();
+    waitKey ();
+
+    namedWindow ( "imagem_final", WINDOW_NORMAL );
+
+    sprintf ( TrackbarName, "gH %d", gH_max );
+    createTrackbar ( TrackbarName, "imagem_final", &slider_gH, gH_max, on_trackbar_gH );
+    on_trackbar_gH ( slider_gH, 0 );
+
+    sprintf ( TrackbarName, "gL %d", gL_max );
+    createTrackbar ( TrackbarName, "imagem_final", &slider_gL, gL_max, on_trackbar_gL );
+    on_trackbar_gL ( slider_gL, 0 );
+
+    sprintf ( TrackbarName, "c %d", c_max );
+    createTrackbar(TrackbarName, "imagem_final", &slider_c, c_max, on_trackbar_c );
+    on_trackbar_c ( slider_c, 0 );
+
+    sprintf ( TrackbarName, "d0 %d", d0_max );
+    createTrackbar ( TrackbarName, "imagem_final", &slider_d0, d0_max, on_trackbar_d0 );
+    on_trackbar_d0 ( slider_d0, 0 );
+
+    homomorfico ();
+
+    int key = '0';
+    for (;;) {
+        key = waitKey ( 20 );
+        if ( key == 27 )
+            break;
+    }
+
+    normalize ( output, output, 0, 255, NORM_MINMAX );
+    image.release ();
+
+    return 0;
+}
+
+void homomorfico () {
+    makeFilter();
+    makeImgFinal();
+}
+
+void makeFilter(){
+    copyMakeBorder ( image, padded, 0, dft_M - image.rows, 0, dft_N - image.cols, BORDER_CONSTANT, Scalar::all ( 0 ) );
+
+    imaginaryInput = Mat ( padded.size (), CV_32FC1, Scalar ( 0 ) );
+
+    padded.convertTo ( padded, CV_32F );
+
+    normalize ( padded, padded, 0.0, 1.0, NORM_MINMAX );
+
+    while ( !planos.empty () ) {
+        planos.pop_back ();
+    }
+
+    while ( !complexImage.empty () ) {
+        complexImage.pop_back ();
+    }
+
+    planos.push_back ( padded );
+    planos.push_back ( imaginaryInput );
+
+    log ( padded + 1, padded );
+    log ( imaginaryInput + 1, imaginaryInput );
+
+    merge ( planos, complexImage );
+
+    filter = Mat ( ( dft_M & -2 ), ( dft_N & -2 ), CV_32FC2, Scalar ( 0, 0 ) );
+
+    for (int i = 0; i < dft_M; i++) {
+        for (int j = 0; j < dft_N; j++) {
+            float h = ( float ) ( gH - gL ) * ( 1.0 - exp ( -c * ( pow ( abs ( i - dft_M / 2 ) + abs ( j - dft_N / 2 ), 2 ) / pow ( d0, 2 ) ) ) ) + gL;
+            filter.at<Vec2f>( i, j )[ 0 ] = h;
+            filter.at<Vec2f>( i, j )[ 1 ] = h;
+        }
+    }
+
+    split ( filter, filtros );
+    normalize ( filtros [ 0 ], filter_print, 0.0, 1.0, NORM_MINMAX );
+    imshow ( "filtro", filter_print );
+}
+
+void makeImgFinal () {
+    dft ( complexImage, complexImage );
+    deslocaDFT ( complexImage );
+    mulSpectrums ( complexImage, filter, complexImage, 0 );
+    deslocaDFT ( complexImage );
+    idft ( complexImage, complexImage, DFT_SCALE );
+
+    exp ( complexImage, complexImage );
+
+    planos.clear ();
+    split ( complexImage, planos );
+
+    normalize ( planos [ 0 ], output, 0.0, 1.0, NORM_MINMAX );
+    imshow ( "imagem_final", output );
+}
+----
+
+== Detecção de bordas com o algoritmo de Canny ==
+
+=== Exercício *_cannypoints.cpp_* ===
+
+Utilizando o programa *canny.cpp* e *pontilhismo.cpp* como referência. Foi desenvolvido um algoritmo para gerar o efeito pontilhista em uma imagem fornecida.
+
+Abaixo, tem-se o código da implementação.
+
+[source, cpp]
+.cannypoints.cpp
+----
+#include <iostream>
+#include "opencv2/opencv.hpp"
+#include <algorithm>
+#include <vector>
+#include <ctime>
+#include <numeric>
+
+using namespace std;
+using namespace cv;
+
+#define STEP 4
+#define JITTER 20
+#define RAIO 8
+#define RAIO_PEQUENO 2
+
+int main () {
+    unsigned width, height, limite_inferior = 50;
+    unsigned x, y;
+    vector<unsigned> xrange, yrange;
+    vector<Vec6i> pontos;
+    Mat points, image, border, image_bw;
+    Vec3b gray;
+
+    image = imread ( "", IMREAD_COLOR );
+
+    cvtColor ( image, image_bw, COLOR_BGR2GRAY );
+
+    width = image.size ().width;
+    height = image.size ().height;
+
+
+    Canny ( image_bw, border, limite_inferior, 3 * limite_inferior );
+
+    xrange.resize ( height / STEP );
+    yrange.resize ( width / STEP );
+
+    iota ( xrange.begin (), xrange.end (), 0 );
+    iota ( yrange.begin (), yrange.end (), 0 );
+
+    for ( uint i = 0; i < xrange.size (); i++ ) {
+        xrange [ i ] = xrange [ i ] * STEP + STEP / 2;
+    }
+
+    for ( uint i = 0; i < yrange.size (); i++ ) {
+        yrange [ i ] = yrange [ i ] * STEP + STEP / 2;
+    }
+
+    points = Mat ( height, width, CV_8UC3, Scalar ( 255, 255, 255 ) );
+
+    random_shuffle ( xrange.begin (), xrange.end () );
+
+    for ( auto i : xrange ) {
+        random_shuffle ( yrange.begin (), yrange.end () );
+        for ( auto j : yrange ) {
+            x = i + rand () % ( 2 * JITTER ) - JITTER + 1;
+            y = j + rand () % ( 2 * JITTER ) - JITTER + 1;
+
+            if ( x >= height ) {
+                x = height - 1;
+            }
+            if ( y >= width ) {
+                y = width - 1;
+            }
+
+            gray = image.at<Vec3b>( x, y );
+            circle ( points, Point ( y, x ), RAIO, Scalar ( gray [ 0 ], gray [ 1 ], gray [ 2 ] ), -1, LINE_AA );
+        }
+    }
+
+    for ( unsigned i = 0; i < height; i++ ) {
+        for ( unsigned j = 0; j < width; j++ ) {
+            if ( border.at<uchar>( i, j ) != 0 ) {
+                gray = image.at<Vec3b>( i, j );
+                pontos.push_back ( Vec6i ( j, i, gray [ 0 ], gray [ 1 ], gray [ 2 ], 0 ) );
+            }
+        }
+    }
+
+    random_shuffle ( pontos.begin (), pontos.end () );
+
+    Scalar cor;
+    for ( unsigned i = 0; i < pontos.size (); i++ ) {
+        Point p ( pontos.at ( i ) [ 0 ], pontos.at ( i ) [ 1 ] );
+        cor = Scalar ( pontos.at ( i ) [ 2 ], pontos.at ( i ) [ 3 ], pontos.at ( i ) [ 4 ] );
+        circle ( points, p, RAIO_PEQUENO, cor, -1, LINE_AA );
+    }
+
+    imshow ( "resultado", points );
+    waitKey ();
+
+    return 0;
+}
+----
+
+image::morro.jpg[title="Resultado - cannypoints.cpp"]
+
+== Quantização vetorial com k-means ==
+
+== Filtragem de forma com morfologia matemática ==
+
+[source, cpp]
+.digitos_morfologia.cpp
+----
+#include <iostream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+int main () {
+    Mat image, output;
+
+    image = imread ( "digitos.png", IMREAD_UNCHANGED );
+
+    if ( image.empty () ) {
+        cout << "Deu ruim" << endl;
+        return -1;
+    }
+
+    morphologyEx ( image, output, MORPH_OPEN, getStructuringElement ( MORPH_RECT, Size ( 4, 10 ) ) );
+
+    imshow ( "", output );
+
+    waitKey ();
+
+    return 0;
+}
+----
+
+image::digitos_output.png[title="Resultado - digitos_morfologia.cpp"]
